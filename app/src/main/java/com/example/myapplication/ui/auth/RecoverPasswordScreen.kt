@@ -11,10 +11,12 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun RecoverPasswordScreen(
+    viewModel: AuthViewModel,
     onEmailSent: () -> Unit,
     onBackToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
+    val isEmailValid = viewModel.isEmailValid(email)
 
     Column(
         modifier = Modifier
@@ -44,13 +46,20 @@ fun RecoverPasswordScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo electrónico") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = email.isNotEmpty() && !isEmailValid,
+            supportingText = {
+                if (email.isNotEmpty() && !isEmailValid) {
+                    Text("Formato de correo inválido")
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = onEmailSent,
+            enabled = isEmailValid,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Enviar Instrucciones")

@@ -1,9 +1,11 @@
 package com.example.myapplication.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.LoginScreen
 import com.example.myapplication.ui.auth.RegisterScreen
 import com.example.myapplication.ui.auth.RecoverPasswordScreen
@@ -21,25 +23,30 @@ fun SetupNavGraph(
     navController: NavHostController,
     startDestination: String = Screen.Login.route
 ) {
+    val authViewModel: AuthViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
         composable(route = Screen.Login.route) {
             LoginScreen(
-                onLoginClick = { navController.navigate(Screen.Main.route) },
+                viewModel = authViewModel,
+                onLoginSuccess = { navController.navigate(Screen.Main.route) },
                 onRegisterClick = { navController.navigate(Screen.Register.route) },
                 onRecoverPasswordClick = { navController.navigate(Screen.RecoverPassword.route) }
             )
         }
         composable(route = Screen.Register.route) {
             RegisterScreen(
+                viewModel = authViewModel,
                 onRegisterSuccess = { navController.navigate(Screen.Login.route) },
                 onBackToLogin = { navController.popBackStack() }
             )
         }
         composable(route = Screen.RecoverPassword.route) {
             RecoverPasswordScreen(
+                viewModel = authViewModel,
                 onEmailSent = { navController.navigate(Screen.Login.route) },
                 onBackToLogin = { navController.popBackStack() }
             )

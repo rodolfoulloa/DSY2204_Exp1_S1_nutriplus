@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
+    viewModel: AuthViewModel,
     onRegisterSuccess: () -> Unit,
     onBackToLogin: () -> Unit
 ) {
@@ -28,6 +29,10 @@ fun RegisterScreen(
     var expanded by remember { mutableStateOf(false) }
     val goals = listOf("Ganar músculo", "Perder peso", "Mantenerse")
     val genders = listOf("Femenino", "Masculino", "Otro")
+
+    val isEmailValid = viewModel.isEmailValid(email)
+    val isPasswordValid = viewModel.isPasswordValid(password)
+    val isFormValid = isEmailValid && isPasswordValid && name.isNotBlank() && termsAccepted
 
     Column(
         modifier = Modifier
@@ -58,7 +63,13 @@ fun RegisterScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo electrónico") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = email.isNotEmpty() && !isEmailValid,
+            supportingText = {
+                if (email.isNotEmpty() && !isEmailValid) {
+                    Text("Formato de correo inválido")
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -66,9 +77,10 @@ fun RegisterScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Contraseña") },
+            label = { Text("Contraseña (mín. 6 caracteres)") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = password.isNotEmpty() && !isPasswordValid
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -146,7 +158,7 @@ fun RegisterScreen(
 
         Button(
             onClick = onRegisterSuccess,
-            enabled = termsAccepted && name.isNotBlank() && email.isNotBlank(),
+            enabled = isFormValid,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Registrarse")

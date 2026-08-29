@@ -1,5 +1,12 @@
 package com.example.myapplication.data
 
+data class User(
+    val id: Int,
+    val email: String,
+    val password: String,
+    val name: String
+)
+
 data class Recipe(
     val id: Int,
     val title: String,
@@ -17,6 +24,16 @@ data class NutritionalRecommendation(
 )
 
 object MockData {
+    // Requerimiento Semana 2/3: Lista de 5 usuarios registrados
+    val registeredUsers = listOf(
+        User(1, "admin@nutriplus.com", "admin123", "Administrador"),
+        User(2, "usuario1@test.com", "pass123", "Juan Pérez"),
+        User(3, "ayuda@nutriplus.org", "nutri2026", "Soporte Nutricional"),
+        User(4, "estudiante@duoc.cl", "duoc123", "Alumno Nutrición"),
+        User(5, "maria@correo.cl", "maria456", "María González")
+    )
+
+    // Datos para el entorno de Minuta Nutricional
     val weeklyRecipes = listOf(
         Recipe(1, "Ensalada César", "Pollo a la plancha con lechuga y aderezo light.", 350, "Almuerzo", "Lunes"),
         Recipe(2, "Salmón al Horno", "Salmón con espárragos y papas al vapor.", 450, "Cena", "Martes"),

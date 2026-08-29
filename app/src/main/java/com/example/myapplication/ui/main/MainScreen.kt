@@ -10,7 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +24,24 @@ import com.example.myapplication.data.NutritionalRecommendation
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(onLogout: () -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cerrar")
+                }
+            },
+            title = { Text("Informe Detallado Nutricional") },
+            text = {
+                Text("Este informe contiene el análisis completo de tu ingesta semanal, comparado con los objetivos establecidos por tu nutricionista.")
+            },
+            icon = { Icon(Icons.Default.Info, contentDescription = null) }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -51,7 +69,6 @@ fun MainScreen(onLogout: () -> Unit) {
             )
 
             // Grid de Recetas (5 elementos)
-            // Usamos una altura fija para el Grid dentro del Scroll vertical o limitamos su tamaño
             Box(modifier = Modifier.height(400.dp)) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 150.dp),
@@ -79,12 +96,12 @@ fun MainScreen(onLogout: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Link simulado
+            // Link ACTIVO
             TextButton(
-                onClick = { /* Navegar a detalles */ },
+                onClick = { showDialog = true },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
-                Text("Ver informe detallado completo", color = MaterialTheme.colorScheme.secondary)
+                Text("Ver informe detallado completo", color = MaterialTheme.colorScheme.primary)
             }
         }
     }
