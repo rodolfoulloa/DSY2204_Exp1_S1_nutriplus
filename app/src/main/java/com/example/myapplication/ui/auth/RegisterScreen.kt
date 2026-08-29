@@ -157,7 +157,11 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = onRegisterSuccess,
+            onClick = {
+                if (viewModel.register(name, email, password)) {
+                    onRegisterSuccess()
+                }
+            },
             enabled = isFormValid,
             modifier = Modifier.fillMaxWidth()
         ) {

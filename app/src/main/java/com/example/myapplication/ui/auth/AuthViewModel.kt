@@ -30,6 +30,16 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun register(name: String, email: String, password: String): Boolean {
+        return if (MockData.registeredUsers.none { it.email == email }) {
+            val newId = (MockData.registeredUsers.maxOfOrNull { it.id } ?: 0) + 1
+            MockData.registeredUsers.add(com.example.myapplication.data.User(newId, email, password, name))
+            true
+        } else {
+            false
+        }
+    }
+
     fun clearError() {
         _loginError.value = null
     }

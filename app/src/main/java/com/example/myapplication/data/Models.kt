@@ -24,8 +24,8 @@ data class NutritionalRecommendation(
 )
 
 object MockData {
-    // Requerimiento Semana 2/3: Lista de 5 usuarios registrados
-    val registeredUsers = listOf(
+    // Requerimiento Semana 2/3: Lista de usuarios registrados (ahora mutable para permitir nuevos registros)
+    val registeredUsers = mutableListOf(
         User(1, "admin@nutriplus.com", "admin123", "Administrador"),
         User(2, "usuario1@test.com", "pass123", "Juan Pérez"),
         User(3, "ayuda@nutriplus.org", "nutri2026", "Soporte Nutricional"),
