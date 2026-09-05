@@ -115,7 +115,9 @@ fun RegisterScreen(
                 readOnly = true,
                 label = { Text("Objetivo Nutricional") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+                modifier = Modifier
+                    .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .fillMaxWidth()
             )
             ExposedDropdownMenu(
                 expanded = expanded,
