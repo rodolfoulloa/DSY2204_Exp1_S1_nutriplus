@@ -22,6 +22,7 @@ fun RegisterScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var goal by remember { mutableStateOf("Mantenerse") }
     var gender by remember { mutableStateOf("Otro") }
     var termsAccepted by remember { mutableStateOf(false) }
@@ -32,7 +33,8 @@ fun RegisterScreen(
 
     val isEmailValid = viewModel.isEmailValid(email)
     val isPasswordValid = viewModel.isPasswordValid(password)
-    val isFormValid = isEmailValid && isPasswordValid && name.isNotBlank() && termsAccepted
+    val passwordsMatch = password == confirmPassword && password.isNotEmpty()
+    val isFormValid = isEmailValid && isPasswordValid && passwordsMatch && name.isNotBlank() && termsAccepted
 
     Column(
         modifier = Modifier
@@ -81,6 +83,22 @@ fun RegisterScreen(
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             isError = password.isNotEmpty() && !isPasswordValid
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirmar Contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            isError = confirmPassword.isNotEmpty() && !passwordsMatch,
+            supportingText = {
+                if (confirmPassword.isNotEmpty() && !passwordsMatch) {
+                    Text("Las contraseñas no coinciden")
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -158,7 +176,7 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (viewModel.register(name, email, password)) {
+                if (viewModel.register(name, email, password, goal, gender)) {
                     onRegisterSuccess()
                 }
             },

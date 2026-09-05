@@ -32,7 +32,12 @@ fun SetupNavGraph(
         composable(route = Screen.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
-                onLoginSuccess = { navController.navigate(Screen.Main.route) },
+                onLoginSuccess = { 
+                    navController.navigate(Screen.Main.route) {
+                        // Limpia el stack de navegación para que no se pueda volver al Login
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
                 onRegisterClick = { navController.navigate(Screen.Register.route) },
                 onRecoverPasswordClick = { navController.navigate(Screen.RecoverPassword.route) }
             )
@@ -40,7 +45,11 @@ fun SetupNavGraph(
         composable(route = Screen.Register.route) {
             RegisterScreen(
                 viewModel = authViewModel,
-                onRegisterSuccess = { navController.navigate(Screen.Login.route) },
+                onRegisterSuccess = { 
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                },
                 onBackToLogin = { navController.popBackStack() }
             )
         }
@@ -53,6 +62,7 @@ fun SetupNavGraph(
         }
         composable(route = Screen.Main.route) {
             MainScreen(
+                viewModel = authViewModel,
                 onLogout = { 
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Main.route) { inclusive = true }
