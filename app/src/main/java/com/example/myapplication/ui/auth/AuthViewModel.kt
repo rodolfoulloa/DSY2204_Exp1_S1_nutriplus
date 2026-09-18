@@ -1,11 +1,14 @@
 package com.example.myapplication.ui.auth
 
+import android.app.Application
 import android.util.Patterns
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.MockData
 import com.example.myapplication.data.Recipe
+import com.example.myapplication.data.RecipeContentProvider
 import com.example.myapplication.data.User
+import com.example.myapplication.data.toRecipe
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _loginError = MutableStateFlow<String?>(null)
     val loginError: StateFlow<String?> = _loginError
@@ -22,13 +25,26 @@ class AuthViewModel : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _recipes = MutableStateFlow(MockData.weeklyRecipes)
+    // Las recetas se leen a través del ContentResolver contra RecipeContentProvider, no directo de MockData
+    private fun loadRecipesFromProvider(): List<Recipe> {
+        val recipes = mutableListOf<Recipe>()
+        getApplication<Application>().contentResolver
+            .query(RecipeContentProvider.CONTENT_URI, null, null, null, null)
+            ?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    recipes.add(cursor.toRecipe())
+                }
+            }
+        return recipes
+    }
+
+    private val _recipes = MutableStateFlow(loadRecipesFromProvider())
     val filteredRecipes: StateFlow<List<Recipe>> = combine(_recipes, _searchQuery) { recipes, query ->
         if (query.isBlank()) {
             recipes
         } else {
-            recipes.filter { 
-                it.title.contains(query, ignoreCase = true) || 
+            recipes.filter {
+                it.title.contains(query, ignoreCase = true) ||
                 it.day.contains(query, ignoreCase = true) ||
                 it.category.contains(query, ignoreCase = true)
             }
@@ -36,7 +52,7 @@ class AuthViewModel : ViewModel() {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = MockData.weeklyRecipes
+        initialValue = _recipes.value
     )
 
     fun onSearchQueryChange(newQuery: String) {

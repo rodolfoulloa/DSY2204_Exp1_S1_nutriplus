@@ -11,6 +11,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+        <provider
+            android:name=".data.RecipeContentProvider"
+            android:authorities="com.example.myapplication.provider"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +27,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".widget.NutriPlusWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nutriplus_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

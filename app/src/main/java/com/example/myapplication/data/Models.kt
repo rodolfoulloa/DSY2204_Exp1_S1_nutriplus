@@ -37,8 +37,8 @@ object MockData {
         User(5, "maria@correo.cl", "maria456", "María González", "Perder peso", "Femenino")
     )
 
-    // Datos para el entorno de Minuta Nutricional
-    val weeklyRecipes = listOf(
+    // Datos para el entorno de Minuta Nutricional (mutable: RecipeContentProvider hace CRUD sobre esta lista)
+    val weeklyRecipes = mutableListOf(
         Recipe(
             1, "Ensalada César", "Pollo a la plancha con lechuga y aderezo light.", 350, "Almuerzo", "Lunes",
             listOf("Pechuga de pollo", "Lechuga romana", "Croutons integrales", "Queso parmesano", "Yogurt natural"),
