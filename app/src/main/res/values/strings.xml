@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">NutriPlus</string>
     <string name="widget_label">NutriPlus - Receta del día</string>
     <string name="widget_title">Receta del día</string>
     <string name="widget_no_recipe">Sin recetas disponibles</string>

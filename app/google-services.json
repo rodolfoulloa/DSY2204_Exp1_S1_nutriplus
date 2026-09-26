@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "913478957601",
+    "project_id": "nutriplus-b362b",
+    "storage_bucket": "nutriplus-b362b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:913478957601:android:b89e2733545dc255508160",
+        "android_client_info": {
+          "package_name": "cl.duoc.rulloa.nutriplus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKGIYhax_HZLZflP_h-xTazaqrTsAYCHE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
