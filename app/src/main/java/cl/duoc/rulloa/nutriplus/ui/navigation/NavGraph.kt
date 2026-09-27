@@ -96,19 +96,16 @@ fun SetupNavGraph(
     val deviceRepository = ServiceLocator.deviceRepository
     val connectivityObserver = ServiceLocator.connectivityObserver
 
-    val wasLoggedInAtStart = remember { authRepository.currentUser != null }
+    // El destino inicial nunca es el detalle: Navigation no extrae argumentos de una ruta de
+    // inicio ya rellenada ("recipe/r4"), y además "Volver" quedaría sin nada debajo. El deep
+    // link se abre encima de la Minuta desde el LaunchedEffect de más abajo.
     val startDestination = remember {
-        when {
-            !wasLoggedInAtStart -> Screen.Login.route
-            deepLinkRecipeId != null -> Screen.RecipeDetail.buildRoute(deepLinkRecipeId)
-            else -> Screen.Minuta.route
-        }
-    }
-    LaunchedEffect(Unit) {
-        if (wasLoggedInAtStart && deepLinkRecipeId != null) onDeepLinkConsumed()
+        if (authRepository.currentUser != null) Screen.Minuta.route else Screen.Login.route
     }
 
     val currentUser by authRepository.observeAuthState().collectAsState(initial = authRepository.currentUser)
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
 
     // La sesión terminó (logout o cuenta eliminada) estando en una pantalla protegida.
     LaunchedEffect(currentUser) {
@@ -121,11 +118,12 @@ fun SetupNavGraph(
         }
     }
 
-    // La app ya estaba corriendo y llega un deep link nuevo mientras hay sesión activa.
-    LaunchedEffect(deepLinkRecipeId, currentUser) {
-        if (deepLinkRecipeId != null && currentUser != null &&
-            navController.currentDestination?.route != Screen.RecipeDetail.route
-        ) {
+    // Abre la receta del deep link apenas hay sesión y el usuario ya salió de las pantallas de
+    // autenticación. Depende de la ruta actual para no competir con la navegación del login:
+    // tras iniciar sesión, onLoginSuccess lleva a la Minuta y recién ahí se abre la receta.
+    LaunchedEffect(deepLinkRecipeId, currentUser, currentRoute) {
+        val authRoutes = setOf(Screen.Login.route, Screen.Register.route, Screen.RecoverPassword.route)
+        if (deepLinkRecipeId != null && currentUser != null && currentRoute != null && currentRoute !in authRoutes) {
             navController.navigate(Screen.RecipeDetail.buildRoute(deepLinkRecipeId))
             onDeepLinkConsumed()
         }
