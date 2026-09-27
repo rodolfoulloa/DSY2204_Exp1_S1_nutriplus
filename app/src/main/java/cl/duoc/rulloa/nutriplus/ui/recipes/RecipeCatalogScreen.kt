@@ -129,7 +129,7 @@ fun RecipeCard(
                 Text(text = recipe.day, fontSize = 12.sp, fontWeight = FontWeight.Light)
                 IconButton(
                     onClick = onToggleFavorite,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(48.dp).offset(x = 8.dp, y = (-8).dp)
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
