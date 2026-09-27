@@ -14,8 +14,10 @@ import cl.duoc.rulloa.nutriplus.data.local.toRecipe
 import com.google.firebase.database.FirebaseDatabase
 
 /**
- * Respalda las recetas con Room (no con una lista en memoria): query() es síncrono porque
- * lo usa el Widget, y Room permite servir esos datos sin red. Las escrituras (insert/update/
+ * Respalda las recetas con Room (no con una lista en memoria): query() es síncrono por
+ * contrato de ContentProvider, y Room permite servir esos datos sin red. Las llamadas desde
+ * otros procesos llegan en hilos Binder; quien lo consulte dentro de la app debe hacerlo
+ * fuera del hilo principal (Room lo exige). Las escrituras (insert/update/
  * delete) actualizan Room de inmediato y además se propagan a Firebase en segundo plano,
  * para que el catálogo compartido quede consistente para el resto de los usuarios.
  */

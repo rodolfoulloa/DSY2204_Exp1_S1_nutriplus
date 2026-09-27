@@ -2,6 +2,7 @@ package cl.duoc.rulloa.nutriplus
 
 import android.app.Application
 import cl.duoc.rulloa.nutriplus.data.ServiceLocator
+import cl.duoc.rulloa.nutriplus.widget.WidgetRefresher
 import com.google.firebase.Firebase
 import com.google.firebase.database.database
 import com.google.firebase.initialize
@@ -42,6 +43,10 @@ class NutriPlusApplication : Application() {
         }
         applicationScope.launch {
             recipeRepository.observeRecipes().collectLatest { /* efecto lateral: escribe en Room */ }
+        }
+        applicationScope.launch {
+            // Login, logout y cuenta eliminada cambian lo que muestra el widget.
+            authRepository.observeAuthState().collectLatest { WidgetRefresher.requestUpdate(this@NutriPlusApplication) }
         }
         applicationScope.launch {
             authRepository.observeAuthState()

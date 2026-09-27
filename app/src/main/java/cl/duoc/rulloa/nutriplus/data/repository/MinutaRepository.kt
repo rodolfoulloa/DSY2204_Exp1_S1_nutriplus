@@ -50,6 +50,8 @@ class MinutaRepository(
                             }
                         }
                         minutaDao.replaceForUser(uid, entities)
+                        // También cubre cambios hechos desde otro dispositivo.
+                        WidgetRefresher.requestUpdate(appContext)
                     }
                 }
             }

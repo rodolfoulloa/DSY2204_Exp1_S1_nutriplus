@@ -14,12 +14,26 @@ import cl.duoc.rulloa.nutriplus.data.ServiceLocator
 import cl.duoc.rulloa.nutriplus.data.todaySpanishDayName
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class NutriPlusWidgetProvider : AppWidgetProvider() {
 
+    // onUpdate corre en el hilo principal y Room no permite consultas ahí (lanza
+    // IllegalStateException y tumba el proceso). goAsync() mantiene vivo el broadcast
+    // mientras la lectura de la caché local se hace en un hilo de fondo.
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        appWidgetIds.forEach { widgetId ->
-            updateWidget(context, appWidgetManager, widgetId)
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                appWidgetIds.forEach { widgetId ->
+                    updateWidget(context, appWidgetManager, widgetId)
+                }
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 
