@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +38,8 @@ fun MinutaScreen(
     val catalogState by viewModel.catalogState.collectAsState()
     val isOffline = rememberIsOffline(connectivityObserver)
     var showInfoDialog by remember { mutableStateOf(false) }
-    var dayForPicker by remember { mutableStateOf<String?>(null) }
+    // null = sin diálogo abierto; oldRecipeId != null = se está reemplazando esa receta (cambiar).
+    var picker by remember { mutableStateOf<PickerRequest?>(null) }
 
     if (showInfoDialog) {
         AlertDialog(
@@ -53,17 +55,22 @@ fun MinutaScreen(
         )
     }
 
-    dayForPicker?.let { day ->
+    picker?.let { request ->
         val assignedIds = (minutaState as? Resource.Success)?.data
-            ?.firstOrNull { it.day == day }?.recipes?.map { it.id }.orEmpty().toSet()
+            ?.firstOrNull { it.day == request.day }?.recipes?.map { it.id }.orEmpty().toSet()
         val available = (catalogState as? Resource.Success)?.data.orEmpty().filter { it.id !in assignedIds }
         RecipePickerDialog(
-            title = "Agregar receta a $day",
+            title = if (request.oldRecipeId != null) "Cambiar receta de ${request.day}" else "Agregar receta a ${request.day}",
             recipes = available,
-            onDismiss = { dayForPicker = null },
+            onDismiss = { picker = null },
             onSelected = { recipe ->
-                viewModel.assign(day, recipe.id)
-                dayForPicker = null
+                val oldId = request.oldRecipeId
+                if (oldId != null) {
+                    viewModel.change(request.day, oldId, recipe.id)
+                } else {
+                    viewModel.assign(request.day, recipe.id)
+                }
+                picker = null
             }
         )
     }
@@ -88,7 +95,8 @@ fun MinutaScreen(
                             minutaDay = minutaDay,
                             onRecipeClick = onRecipeClick,
                             onRemove = { recipeId -> viewModel.remove(minutaDay.day, recipeId) },
-                            onAddClick = { dayForPicker = minutaDay.day }
+                            onChangeClick = { recipeId -> picker = PickerRequest(minutaDay.day, recipeId) },
+                            onAddClick = { picker = PickerRequest(minutaDay.day, oldRecipeId = null) }
                         )
                     }
                     item {
@@ -116,11 +124,14 @@ fun MinutaScreen(
     }
 }
 
+private data class PickerRequest(val day: String, val oldRecipeId: String?)
+
 @Composable
 private fun DaySection(
     minutaDay: MinutaDay,
     onRecipeClick: (String) -> Unit,
     onRemove: (String) -> Unit,
+    onChangeClick: (String) -> Unit,
     onAddClick: () -> Unit
 ) {
     Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
@@ -154,6 +165,12 @@ private fun DaySection(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(recipe.title, fontWeight = FontWeight.Medium)
                             Text("${recipe.category} · ${recipe.calories} kcal", fontSize = 12.sp)
+                        }
+                        IconButton(
+                            onClick = { onChangeClick(recipe.id) },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = "Cambiar ${recipe.title} en ${minutaDay.day}")
                         }
                         IconButton(
                             onClick = { onRemove(recipe.id) },
