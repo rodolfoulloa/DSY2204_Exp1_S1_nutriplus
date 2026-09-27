@@ -11,7 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 /**
@@ -38,11 +40,22 @@ class NutriPlusApplication : Application() {
         val minutaRepository = ServiceLocator.minutaRepository
         val authRepository = ServiceLocator.authRepository
 
+        // Las reglas exigen auth != null para leer /recipes. Si el listener se conecta antes de
+        // que Firebase Auth restaure la sesión, el servidor lo rechaza (Permission denied) y
+        // Firebase lo cancela para siempre; por eso se conecta recién cuando hay usuario.
         applicationScope.launch {
-            recipeRepository.seedCatalogIfEmpty()
-        }
-        applicationScope.launch {
-            recipeRepository.observeRecipes().collectLatest { /* efecto lateral: escribe en Room */ }
+            authRepository.observeAuthState()
+                .flatMapLatest { user ->
+                    if (user == null) {
+                        emptyFlow()
+                    } else {
+                        flow {
+                            recipeRepository.seedCatalogIfEmpty()
+                            emitAll(recipeRepository.observeRecipes())
+                        }
+                    }
+                }
+                .collectLatest { /* efecto lateral: escribe en Room */ }
         }
         applicationScope.launch {
             // Login, logout y cuenta eliminada cambian lo que muestra el widget.
