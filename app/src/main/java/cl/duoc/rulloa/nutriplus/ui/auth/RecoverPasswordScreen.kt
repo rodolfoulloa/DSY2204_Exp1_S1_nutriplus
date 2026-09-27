@@ -16,6 +16,7 @@ fun RecoverPasswordScreen(
     onBackToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
     val isEmailValid = viewModel.isEmailValid(email)
 
     Column(
@@ -44,13 +45,16 @@ fun RecoverPasswordScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it; viewModel.clearError() },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth(),
-            isError = email.isNotEmpty() && !isEmailValid,
+            singleLine = true,
+            isError = (email.isNotEmpty() && !isEmailValid) || uiState.error != null,
             supportingText = {
                 if (email.isNotEmpty() && !isEmailValid) {
                     Text("Formato de correo inválido")
+                } else if (uiState.error != null) {
+                    Text(uiState.error ?: "")
                 }
             }
         )
@@ -58,16 +62,22 @@ fun RecoverPasswordScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = onEmailSent,
-            enabled = isEmailValid,
-            modifier = Modifier.fillMaxWidth()
+            onClick = { viewModel.sendPasswordReset(email, onSuccess = onEmailSent) },
+            enabled = isEmailValid && !uiState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
         ) {
-            Text("Enviar Instrucciones")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Enviar Instrucciones")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onBackToLogin) {
+        TextButton(onClick = onBackToLogin, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Volver al Login")
         }
     }

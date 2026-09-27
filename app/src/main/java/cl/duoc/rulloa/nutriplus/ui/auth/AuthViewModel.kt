@@ -1,94 +1,121 @@
 package cl.duoc.rulloa.nutriplus.ui.auth
 
-import android.app.Application
 import android.util.Patterns
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cl.duoc.rulloa.nutriplus.data.MockData
-import cl.duoc.rulloa.nutriplus.data.Recipe
-import cl.duoc.rulloa.nutriplus.data.RecipeContentProvider
-import cl.duoc.rulloa.nutriplus.data.User
-import cl.duoc.rulloa.nutriplus.data.toRecipe
+import cl.duoc.rulloa.nutriplus.data.UserProfile
+import cl.duoc.rulloa.nutriplus.data.repository.AuthRepository
+import cl.duoc.rulloa.nutriplus.data.repository.UserRepository
+import cl.duoc.rulloa.nutriplus.data.repository.toAuthMessage
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
+data class AuthUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val infoMessage: String? = null
+)
 
-    private val _loginError = MutableStateFlow<String?>(null)
-    val loginError: StateFlow<String?> = _loginError
+/**
+ * Login, registro y recuperación de contraseña contra Firebase Auth. Al registrarse,
+ * además crea el perfil del usuario en Realtime Database (/users/{uid}/profile).
+ */
+class AuthViewModel(
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
+) : ViewModel() {
 
-    // Lógica de búsqueda de recetas
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery = _searchQuery.asStateFlow()
+    private val _uiState = MutableStateFlow(AuthUiState())
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    // Las recetas se leen a través del ContentResolver contra RecipeContentProvider, no directo de MockData
-    private fun loadRecipesFromProvider(): List<Recipe> {
-        val recipes = mutableListOf<Recipe>()
-        getApplication<Application>().contentResolver
-            .query(RecipeContentProvider.CONTENT_URI, null, null, null, null)
-            ?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    recipes.add(cursor.toRecipe())
+    fun isEmailValid(email: String): Boolean =
+        email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
+
+    fun isPasswordValid(password: String): Boolean = password.length >= 6
+
+    fun login(email: String, password: String, onSuccess: () -> Unit) {
+        if (!isEmailValid(email)) {
+            _uiState.update { it.copy(error = "Ingresa un correo electrónico válido.") }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            authRepository.login(email, password)
+                .onSuccess {
+                    _uiState.update { it.copy(isLoading = false) }
+                    onSuccess()
                 }
-            }
-        return recipes
-    }
-
-    private val _recipes = MutableStateFlow(loadRecipesFromProvider())
-    val filteredRecipes: StateFlow<List<Recipe>> = combine(_recipes, _searchQuery) { recipes, query ->
-        if (query.isBlank()) {
-            recipes
-        } else {
-            recipes.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                it.day.contains(query, ignoreCase = true) ||
-                it.category.contains(query, ignoreCase = true)
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = _recipes.value
-    )
-
-    fun onSearchQueryChange(newQuery: String) {
-        _searchQuery.value = newQuery
-    }
-
-    fun isEmailValid(email: String): Boolean {
-        return email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
-    }
-
-    fun isPasswordValid(password: String): Boolean {
-        return password.length >= 6
-    }
-
-    fun login(email: String, password: String): Boolean {
-        val user = MockData.registeredUsers.find { it.email == email && it.password == password }
-        return if (user != null) {
-            _loginError.value = null
-            true
-        } else {
-            _loginError.value = "Correo o contraseña incorrectos"
-            false
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.toAuthMessage()) }
+                }
         }
     }
 
-    fun register(name: String, email: String, password: String, goal: String, gender: String): Boolean {
-        return if (MockData.registeredUsers.none { it.email == email }) {
-            val newId = (MockData.registeredUsers.maxOfOrNull { it.id } ?: 0) + 1
-            MockData.registeredUsers.add(User(newId, email, password, name, goal, gender))
-            true
-        } else {
-            false
+    fun register(
+        name: String,
+        email: String,
+        password: String,
+        goal: String,
+        gender: String,
+        onSuccess: () -> Unit
+    ) {
+        if (name.isBlank()) {
+            _uiState.update { it.copy(error = "Ingresa tu nombre completo.") }
+            return
+        }
+        if (!isEmailValid(email)) {
+            _uiState.update { it.copy(error = "Ingresa un correo electrónico válido.") }
+            return
+        }
+        if (!isPasswordValid(password)) {
+            _uiState.update { it.copy(error = "La contraseña debe tener al menos 6 caracteres.") }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            authRepository.register(email, password)
+                .onSuccess { user ->
+                    val profile = UserProfile(
+                        name = name,
+                        email = email,
+                        goal = goal,
+                        gender = gender,
+                        createdAt = System.currentTimeMillis()
+                    )
+                    userRepository.createProfile(user.uid, profile)
+                    _uiState.update { it.copy(isLoading = false) }
+                    onSuccess()
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.toAuthMessage()) }
+                }
+        }
+    }
+
+    fun sendPasswordReset(email: String, onSuccess: () -> Unit) {
+        if (!isEmailValid(email)) {
+            _uiState.update { it.copy(error = "Ingresa un correo electrónico válido.") }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            authRepository.sendPasswordReset(email)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(isLoading = false, infoMessage = "Te enviamos instrucciones a tu correo.")
+                    }
+                    onSuccess()
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.toAuthMessage()) }
+                }
         }
     }
 
     fun clearError() {
-        _loginError.value = null
+        _uiState.update { it.copy(error = null) }
     }
 }

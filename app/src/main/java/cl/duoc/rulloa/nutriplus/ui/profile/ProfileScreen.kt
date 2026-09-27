@@ -1,0 +1,125 @@
+package cl.duoc.rulloa.nutriplus.ui.profile
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import cl.duoc.rulloa.nutriplus.data.Resource
+import cl.duoc.rulloa.nutriplus.ui.common.ResourceContent
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    onLoggedOut: () -> Unit
+) {
+    val profileState by viewModel.profileState.collectAsState()
+    val actionState by viewModel.actionState.collectAsState()
+    var isEditingName by remember { mutableStateOf(false) }
+    var nameDraft by remember { mutableStateOf("") }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Eliminar cuenta") },
+            text = {
+                Text("Se borrará tu cuenta y todos tus datos (minuta, favoritas y dispositivos). Esta acción no se puede deshacer.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.deleteAccount { result ->
+                        if (result.isSuccess) onLoggedOut()
+                    }
+                }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    Scaffold(topBar = { TopAppBar(title = { Text("Mi Perfil") }) }) { padding ->
+        ResourceContent(
+            resource = profileState,
+            isEmpty = { it == null },
+            emptyMessage = "No se pudo cargar tu perfil",
+            modifier = Modifier.padding(padding).fillMaxSize()
+        ) { profile ->
+            if (profile == null) return@ResourceContent
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Text("Correo electrónico", style = MaterialTheme.typography.labelLarge)
+                Text(profile.email, modifier = Modifier.padding(bottom = 16.dp))
+
+                Text("Nombre", style = MaterialTheme.typography.labelLarge)
+                if (isEditingName) {
+                    OutlinedTextField(
+                        value = nameDraft,
+                        onValueChange = { nameDraft = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(modifier = Modifier.padding(top = 8.dp)) {
+                        Button(
+                            onClick = {
+                                viewModel.updateName(nameDraft)
+                                isEditingName = false
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("Guardar") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(
+                            onClick = { isEditingName = false },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("Cancelar") }
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(profile.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(
+                            onClick = { nameDraft = profile.name; isEditingName = true },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("Editar") }
+                    }
+                }
+
+                if (actionState.error != null) {
+                    Text(
+                        actionState.error ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.logout()
+                        onLoggedOut()
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Cerrar sesión") }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { showDeleteConfirm = true },
+                    enabled = !actionState.isLoading,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) {
+                    if (actionState.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Eliminar mi cuenta")
+                    }
+                }
+            }
+        }
+    }
+}

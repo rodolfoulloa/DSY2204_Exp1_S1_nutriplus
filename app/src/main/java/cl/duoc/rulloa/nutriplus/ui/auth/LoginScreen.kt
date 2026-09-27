@@ -5,6 +5,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
@@ -19,7 +21,7 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val loginError by viewModel.loginError.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -34,64 +36,71 @@ fun LoginScreen(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
             value = email,
-            onValueChange = { 
+            onValueChange = {
                 email = it
                 viewModel.clearError()
             },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth(),
-            isError = loginError != null
+            singleLine = true,
+            isError = uiState.error != null
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
-            onValueChange = { 
+            onValueChange = {
                 password = it
                 viewModel.clearError()
             },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            isError = loginError != null
+            singleLine = true,
+            isError = uiState.error != null
         )
 
-            if (loginError != null) {
-                Text(
-                    text = loginError ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
+        if (uiState.error != null) {
+            Text(
+                text = uiState.error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .semantics { contentDescription = "Error: ${uiState.error}" }
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = {
-                if (viewModel.login(email, password)) {
-                    onLoginSuccess()
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
+            onClick = { viewModel.login(email, password, onSuccess = onLoginSuccess) },
+            enabled = !uiState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
             shape = MaterialTheme.shapes.medium
         ) {
-            Text("Iniciar Sesión")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Iniciar Sesión")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onRecoverPasswordClick) {
+        TextButton(onClick = onRecoverPasswordClick, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("¿Olvidaste tu contraseña?")
         }
 
-        TextButton(onClick = onRegisterClick) {
+        TextButton(onClick = onRegisterClick, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("¿No tienes cuenta? Regístrate aquí")
         }
     }

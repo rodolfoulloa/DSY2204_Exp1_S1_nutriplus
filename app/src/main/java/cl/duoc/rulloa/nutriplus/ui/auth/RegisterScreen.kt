@@ -26,11 +26,12 @@ fun RegisterScreen(
     var goal by remember { mutableStateOf("Mantenerse") }
     var gender by remember { mutableStateOf("Otro") }
     var termsAccepted by remember { mutableStateOf(false) }
-    
+
     var expanded by remember { mutableStateOf(false) }
     val goals = listOf("Ganar músculo", "Perder peso", "Mantenerse")
     val genders = listOf("Femenino", "Masculino", "Otro")
 
+    val uiState by viewModel.uiState.collectAsState()
     val isEmailValid = viewModel.isEmailValid(email)
     val isPasswordValid = viewModel.isPasswordValid(password)
     val passwordsMatch = password == confirmPassword && password.isNotEmpty()
@@ -54,18 +55,20 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it },
+            onValueChange = { name = it; viewModel.clearError() },
             label = { Text("Nombre Completo") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it; viewModel.clearError() },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             isError = email.isNotEmpty() && !isEmailValid,
             supportingText = {
                 if (email.isNotEmpty() && !isEmailValid) {
@@ -78,21 +81,28 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { password = it; viewModel.clearError() },
             label = { Text("Contraseña (mín. 6 caracteres)") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            isError = password.isNotEmpty() && !isPasswordValid
+            singleLine = true,
+            isError = password.isNotEmpty() && !isPasswordValid,
+            supportingText = {
+                if (password.isNotEmpty() && !isPasswordValid) {
+                    Text("La contraseña debe tener al menos 6 caracteres")
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = { confirmPassword = it; viewModel.clearError() },
             label = { Text("Confirmar Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             isError = confirmPassword.isNotEmpty() && !passwordsMatch,
             supportingText = {
                 if (confirmPassword.isNotEmpty() && !passwordsMatch) {
@@ -143,7 +153,7 @@ fun RegisterScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
@@ -161,7 +171,9 @@ fun RegisterScreen(
 
         // Checkbox (Términos)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
@@ -174,21 +186,34 @@ fun RegisterScreen(
             )
         }
 
+        if (uiState.error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp
+            )
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = {
-                if (viewModel.register(name, email, password, goal, gender)) {
-                    onRegisterSuccess()
-                }
+                viewModel.register(name, email, password, goal, gender, onSuccess = onRegisterSuccess)
             },
-            enabled = isFormValid,
-            modifier = Modifier.fillMaxWidth()
+            enabled = isFormValid && !uiState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
         ) {
-            Text("Registrarse")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Registrarse")
+            }
         }
 
-        TextButton(onClick = onBackToLogin) {
+        TextButton(onClick = onBackToLogin, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Ya tengo cuenta. Iniciar sesión")
         }
     }
