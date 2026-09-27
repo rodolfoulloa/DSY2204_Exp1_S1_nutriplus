@@ -1,13 +1,24 @@
 package cl.duoc.rulloa.nutriplus.data
 
 import android.content.ContentProvider
-import android.content.ContentUris
 import android.content.ContentValues
 import android.content.UriMatcher
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import cl.duoc.rulloa.nutriplus.data.local.AppDatabase
+import cl.duoc.rulloa.nutriplus.data.local.RecipeDao
+import cl.duoc.rulloa.nutriplus.data.local.RecipeEntity
+import cl.duoc.rulloa.nutriplus.data.local.toEntity
+import cl.duoc.rulloa.nutriplus.data.local.toRecipe
+import com.google.firebase.database.FirebaseDatabase
 
+/**
+ * Respalda las recetas con Room (no con una lista en memoria): query() es síncrono porque
+ * lo usa el Widget, y Room permite servir esos datos sin red. Las escrituras (insert/update/
+ * delete) actualizan Room de inmediato y además se propagan a Firebase en segundo plano,
+ * para que el catálogo compartido quede consistente para el resto de los usuarios.
+ */
 class RecipeContentProvider : ContentProvider() {
 
     companion object {
@@ -35,11 +46,18 @@ class RecipeContentProvider : ContentProvider() {
 
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(AUTHORITY, "recipes", CODE_RECIPES)
-            addURI(AUTHORITY, "recipes/#", CODE_RECIPE_ID)
+            addURI(AUTHORITY, "recipes/*", CODE_RECIPE_ID)
         }
+
+        fun uriForRecipe(id: String): Uri = CONTENT_URI.buildUpon().appendPath(id).build()
     }
 
-    override fun onCreate(): Boolean = true
+    private lateinit var recipeDao: RecipeDao
+
+    override fun onCreate(): Boolean {
+        recipeDao = AppDatabase.getInstance(requireNotNull(context)).recipeDao()
+        return true
+    }
 
     override fun query(
         uri: Uri,
@@ -50,11 +68,8 @@ class RecipeContentProvider : ContentProvider() {
     ): Cursor {
         val columns = projection ?: ALL_COLUMNS
         val recipes = when (uriMatcher.match(uri)) {
-            CODE_RECIPE_ID -> {
-                val id = ContentUris.parseId(uri).toInt()
-                MockData.weeklyRecipes.filter { it.id == id }
-            }
-            CODE_RECIPES -> MockData.weeklyRecipes
+            CODE_RECIPE_ID -> listOfNotNull(recipeDao.getByIdSync(uri.lastPathSegment.orEmpty()))
+            CODE_RECIPES -> recipeDao.getAllSync()
             else -> throw IllegalArgumentException("URI no soportada: $uri")
         }
         val cursor = MatrixCursor(columns)
@@ -73,10 +88,14 @@ class RecipeContentProvider : ContentProvider() {
 
     override fun insert(uri: Uri, values: ContentValues?): Uri {
         requireNotNull(values) { "ContentValues no puede ser nulo" }
-        val newId = (MockData.weeklyRecipes.maxOfOrNull { it.id } ?: 0) + 1
-        MockData.weeklyRecipes.add(values.toRecipe(newId))
+        val id = values.getAsString(COLUMN_ID)?.takeIf { it.isNotBlank() }
+            ?: FirebaseDatabase.getInstance().getReference("recipes").push().key
+            ?: error("No se pudo generar un id de receta")
+        val recipe = values.toRecipe(id)
+        recipeDao.insertAll(listOf(recipe.toEntity()))
+        propagateToFirebase(id, recipe)
         context?.contentResolver?.notifyChange(uri, null)
-        return ContentUris.withAppendedId(CONTENT_URI, newId.toLong())
+        return uriForRecipe(id)
     }
 
     override fun update(
@@ -86,19 +105,27 @@ class RecipeContentProvider : ContentProvider() {
         selectionArgs: Array<out String>?
     ): Int {
         requireNotNull(values) { "ContentValues no puede ser nulo" }
-        val id = ContentUris.parseId(uri).toInt()
-        val index = MockData.weeklyRecipes.indexOfFirst { it.id == id }
-        if (index == -1) return 0
-        MockData.weeklyRecipes[index] = MockData.weeklyRecipes[index].mergeWith(values)
+        val id = uri.lastPathSegment ?: return 0
+        val current = recipeDao.getByIdSync(id)?.toRecipe() ?: return 0
+        val updated = current.mergeWith(values)
+        recipeDao.insertAll(listOf(updated.toEntity()))
+        propagateToFirebase(id, updated)
         context?.contentResolver?.notifyChange(uri, null)
         return 1
     }
 
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
-        val id = ContentUris.parseId(uri).toInt()
-        val removed = MockData.weeklyRecipes.removeAll { it.id == id }
-        if (removed) context?.contentResolver?.notifyChange(uri, null)
-        return if (removed) 1 else 0
+        val id = uri.lastPathSegment ?: return 0
+        recipeDao.getByIdSync(id) ?: return 0
+        recipeDao.deleteById(id)
+        FirebaseDatabase.getInstance().getReference("recipes").child(id).removeValue()
+        context?.contentResolver?.notifyChange(uri, null)
+        return 1
+    }
+
+    /** Escritura en segundo plano: no bloquea al llamador del Provider por una espera de red. */
+    private fun propagateToFirebase(id: String, recipe: Recipe) {
+        FirebaseDatabase.getInstance().getReference("recipes").child(id).setValue(recipe)
     }
 
     private fun Recipe.valueFor(column: String): Any = when (column) {
@@ -113,7 +140,9 @@ class RecipeContentProvider : ContentProvider() {
         else -> throw IllegalArgumentException("Columna no soportada: $column")
     }
 
-    private fun ContentValues.toRecipe(id: Int): Recipe = Recipe(
+    private fun RecipeEntity.valueFor(column: String): Any = toRecipe().valueFor(column)
+
+    private fun ContentValues.toRecipe(id: String): Recipe = Recipe(
         id = id,
         title = getAsString(COLUMN_TITLE) ?: "",
         description = getAsString(COLUMN_DESCRIPTION) ?: "",
@@ -138,7 +167,7 @@ class RecipeContentProvider : ContentProvider() {
 fun Cursor.toRecipe(): Recipe {
     fun col(name: String) = getColumnIndexOrThrow(name)
     return Recipe(
-        id = getInt(col(RecipeContentProvider.COLUMN_ID)),
+        id = getString(col(RecipeContentProvider.COLUMN_ID)),
         title = getString(col(RecipeContentProvider.COLUMN_TITLE)),
         description = getString(col(RecipeContentProvider.COLUMN_DESCRIPTION)),
         calories = getInt(col(RecipeContentProvider.COLUMN_CALORIES)),
