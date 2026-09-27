@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -31,7 +32,9 @@ class MainActivity : ComponentActivity() {
             NutriPlusTheme {
                 val navController = rememberNavController()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
+                    // consumeWindowInsets: los Scaffold/TopAppBar de cada pantalla no vuelven a
+                    // sumar la barra de estado (antes quedaba un espacio en blanco doble arriba).
+                    Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
                         SetupNavGraph(
                             navController = navController,
                             deepLinkRecipeId = deepLinkRecipeId,

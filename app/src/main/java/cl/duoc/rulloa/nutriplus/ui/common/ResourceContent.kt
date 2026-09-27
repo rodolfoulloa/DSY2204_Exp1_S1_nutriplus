@@ -76,7 +76,8 @@ fun <T> ResourceContent(
                 Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            content(resource.data)
+            // El modifier trae el padding del Scaffold: sin él, el contenido queda bajo la barra superior.
+            Box(modifier) { content(resource.data) }
         }
     }
 }
