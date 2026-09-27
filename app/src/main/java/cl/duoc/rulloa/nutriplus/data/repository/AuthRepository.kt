@@ -2,6 +2,7 @@ package cl.duoc.rulloa.nutriplus.data.repository
 
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.Firebase
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -35,6 +36,7 @@ class AuthRepository(
 ) {
     val currentUser: FirebaseUser? get() = auth.currentUser
     val currentUid: String? get() = auth.currentUser?.uid
+    val currentEmail: String? get() = auth.currentUser?.email
 
     /** Emite el usuario actual cada vez que cambia la sesión (login, logout, registro). */
     fun observeAuthState(): Flow<FirebaseUser?> = callbackFlow {
@@ -58,6 +60,17 @@ class AuthRepository(
     }
 
     fun logout() = auth.signOut()
+
+    /**
+     * Firebase exige un inicio de sesión reciente (unos 5 minutos) para eliminar la cuenta.
+     * Reautenticar con la contraseña antes de borrar evita quedar con la cuenta viva pero
+     * sin datos si el borrado de la cuenta fallara después de borrar /users/{uid}.
+     */
+    suspend fun reauthenticate(password: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("No hay una sesión activa.")
+        val email = user.email ?: error("La cuenta no tiene correo asociado.")
+        user.reauthenticate(EmailAuthProvider.getCredential(email, password)).await()
+    }
 
     suspend fun deleteAccount(): Result<Unit> = runCatching {
         val user = auth.currentUser ?: error("No hay una sesión activa.")
