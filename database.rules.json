@@ -1,0 +1,58 @@
+{
+  "rules": {
+    "recipes": {
+      ".read": "auth != null",
+      ".write": false,
+      "$recipeId": {
+        ".validate": "newData.hasChildren(['id', 'title', 'category', 'day', 'calories'])",
+        "id": { ".validate": "newData.isString() && newData.val() == $recipeId" },
+        "title": { ".validate": "newData.isString() && newData.val().length > 0" },
+        "description": { ".validate": "newData.isString()" },
+        "calories": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "category": { ".validate": "newData.isString()" },
+        "day": { ".validate": "newData.isString()" },
+        "preparation": { ".validate": "newData.isString()" },
+        "ingredients": { ".validate": true }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+
+        "profile": {
+          ".validate": "newData.hasChildren(['name', 'email'])",
+          "name": { ".validate": "newData.isString() && newData.val().length > 0" },
+          "email": { ".validate": "newData.isString() && newData.val().length > 0" },
+          "goal": { ".validate": "newData.isString()" },
+          "gender": { ".validate": "newData.isString()" },
+          "createdAt": { ".validate": "newData.isNumber()" }
+        },
+
+        "minuta": {
+          "$day": {
+            "$recipeId": {
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
+
+        "favorites": {
+          "$recipeId": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
+
+        "devices": {
+          "$deviceId": {
+            ".validate": "newData.hasChildren(['name'])",
+            "id": { ".validate": "newData.isString()" },
+            "name": { ".validate": "newData.isString() && newData.val().length > 0" },
+            "type": { ".validate": "newData.isString()" },
+            "createdAt": { ".validate": "newData.isNumber()" }
+          }
+        }
+      }
+    }
+  }
+}
