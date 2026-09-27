@@ -5,6 +5,7 @@ import cl.duoc.rulloa.nutriplus.data.Recipe
 import cl.duoc.rulloa.nutriplus.data.Resource
 import cl.duoc.rulloa.nutriplus.data.local.RecipeDao
 import cl.duoc.rulloa.nutriplus.data.local.toEntity
+import cl.duoc.rulloa.nutriplus.data.local.toRecipe
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -61,6 +62,10 @@ class RecipeRepository(
     suspend fun syncToLocalCache(recipes: List<Recipe>) = withContext(Dispatchers.IO) {
         recipeDao.replaceAll(recipes.map { it.toEntity() })
     }
+
+    /** Lectura síncrona desde la caché local (Room), sin red. La usa el Widget. */
+    fun getCachedByIdsSync(ids: List<String>): List<Recipe> =
+        if (ids.isEmpty()) emptyList() else recipeDao.getByIdsSync(ids).map { it.toRecipe() }
 
     fun observeFavorites(uid: String): Flow<Resource<Set<String>>> = callbackFlow {
         trySend(Resource.Loading)

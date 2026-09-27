@@ -10,8 +10,7 @@ import android.widget.RemoteViews
 import cl.duoc.rulloa.nutriplus.MainActivity
 import cl.duoc.rulloa.nutriplus.R
 import cl.duoc.rulloa.nutriplus.data.Recipe
-import cl.duoc.rulloa.nutriplus.data.local.AppDatabase
-import cl.duoc.rulloa.nutriplus.data.local.toRecipe
+import cl.duoc.rulloa.nutriplus.data.ServiceLocator
 import cl.duoc.rulloa.nutriplus.data.todaySpanishDayName
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -28,7 +27,7 @@ class NutriPlusWidgetProvider : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_nutriplus)
         val uid = Firebase.auth.currentUser?.uid
 
-        val recipe = uid?.let { todaysRecipe(context, it) }
+        val recipe = uid?.let { todaysRecipe(it) }
         when {
             uid == null -> {
                 views.setTextViewText(R.id.widget_recipe_name, context.getString(R.string.widget_login_required))
@@ -69,12 +68,10 @@ class NutriPlusWidgetProvider : AppWidgetProvider() {
         )
     }
 
-    /** Lectura síncrona desde Room: la minuta del usuario y el catálogo, ambos ya cacheados localmente. */
-    private fun todaysRecipe(context: Context, uid: String): Recipe? {
-        val database = AppDatabase.getInstance(context)
+    /** Lectura síncrona desde la caché local (Room, vía los repositorios): sin red. */
+    private fun todaysRecipe(uid: String): Recipe? {
         val today = todaySpanishDayName()
-        val recipeIds = database.minutaDao().getRecipeIdsForDaySync(uid, today)
-        if (recipeIds.isEmpty()) return null
-        return database.recipeDao().getByIdsSync(recipeIds).firstOrNull()?.toRecipe()
+        val recipeIds = ServiceLocator.minutaRepository.todaysRecipeIdsSync(uid, today)
+        return ServiceLocator.recipeRepository.getCachedByIdsSync(recipeIds).firstOrNull()
     }
 }
