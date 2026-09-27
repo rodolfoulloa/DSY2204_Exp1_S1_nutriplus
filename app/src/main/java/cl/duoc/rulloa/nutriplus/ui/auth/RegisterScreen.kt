@@ -2,11 +2,14 @@ package cl.duoc.rulloa.nutriplus.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
@@ -149,16 +152,23 @@ fun RegisterScreen(
 
         // Radio Buttons (Género)
         Text("Género:", modifier = Modifier.align(Alignment.Start), fontWeight = FontWeight.Medium)
+        // Toda la fila es seleccionable (no solo el círculo): más fácil de tocar y TalkBack la
+        // lee como una sola opción.
         genders.forEach { text ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp),
+                    .heightIn(min = 48.dp)
+                    .selectable(
+                        selected = (text == gender),
+                        onClick = { gender = text },
+                        role = Role.RadioButton
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = (text == gender),
-                    onClick = { gender = text }
+                    onClick = null
                 )
                 Text(
                     text = text,
@@ -173,16 +183,22 @@ fun RegisterScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp),
+                .heightIn(min = 48.dp)
+                .toggleable(
+                    value = termsAccepted,
+                    onValueChange = { termsAccepted = it },
+                    role = Role.Checkbox
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = termsAccepted,
-                onCheckedChange = { termsAccepted = it }
+                onCheckedChange = null
             )
             Text(
                 text = "Acepto los términos y condiciones",
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
 
